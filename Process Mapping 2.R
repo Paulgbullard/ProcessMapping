@@ -1,21 +1,18 @@
 library(bupaR)
 library(dplyr)
+library(anytime)
+library(tidyverse)
 
-dat <- readxl::read_excel("Data/Sunderland discharge hub data PB.xlsx",sheet = "Sheet1")
+dat <- readxl::read_excel("Data/Sunderland Discharge Hub Data PB - 2nd Update.xls",sheet = "Sheet1")
 
-dat$`Appointment Date Transformed` <- na_if(dat$`Appointment Date Transformed`,"no appt")
+dat$AppointmentDateTransformed <- as.integer(dat$AppointmentDateTransformed)
 
-dat$`Appointment Date Transformed`<- as.integer(dat$`Appointment Date Transformed`)
+dat$AppointmentDateTransformed <- as.Date(dat$`AppointmentDateTransformed`, origin = "1900-01-01")
 
-dat$`Appointment Date Transformed`<- as.Date(dat$`Appointment Date Transformed`, origin = "1900-01-01")
 
-small_dat <- head(dat, 11)
-
-Event_Log <- simple_eventlog(small_dat,
-                             case_id = "Full Name",
-                             activity_id = "Slot Type Transformed",
-                             timestamp = "Appointment Date Transformed",
-                             resource_id = "Professional involved")
+small_dat <- dat %>% 
+  rename(`Professionalinvolved` = `Professional involved`)
+  
 
 Event_log2 <- small_dat %>% 
               mutate(status = "complete",
@@ -23,27 +20,26 @@ Event_log2 <- small_dat %>%
 
 Event_log3 <- Event_log2 %>% 
               eventlog(
-                case_id = "Full Name",
-                activity_id = "Slot Type Transformed",
+                case_id = "PtReferralDateTime",
+                activity_id = "SlotTypeTransformed",
                 activity_instance_id = "activity_instance",
-                timestamp = "Appointment Date Transformed",
+                timestamp = "AppointmentDateTransformed",
                 lifecycle_id = "status",
-                resource_id = "Professional involved")
+                resource_id = "Professionalinvolved")
 
-Event_log3 %>% activities
+Event_log3 %>% process_map()
+Event_log3 %>% filter_activity_frequency(percentage = 0.9) %>% process_map()
+Event_log3 %>% precedence_matrix(type = "relative") %>% plot()
 
-Event_log3
+ResourceFrequency <- resource_frequency(Event_log3,"resource-activity")
+write.csv(ResourceFrequency, file = "ResourceFrequency.csv")
 
-Event_log3 %>% activities
-Event_log3 %>% summary
-process_map(Event_log3)
+traces <- Event_log3 %>% traces()
+write.csv(traces, file = "Traces.csv")
 
-patients %>% 
-  filter_activity(c("X-Ray", "Blood test")) %>% 
-  activities
-
-head(patients)
-
-pt <- patients
-
-example_log_1
+performance1 <- Event_log3 %>% 
+                process_matrix(type = 
+                              performance(median,units = "days",
+                                          flow_time = "inter_start_time")
+                              )
+write.csv(performance1, file = "FlowAnalysis.csv")
