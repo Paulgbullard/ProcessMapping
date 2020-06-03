@@ -29,7 +29,10 @@ Event_log3 <- Event_log2 %>%
 
 Event_log3 %>% process_map()
 Event_log3 %>% filter_activity_frequency(percentage = 0.9) %>% process_map()
-Event_log3 %>% precedence_matrix(type = "relative") %>% plot()
+precedence_rel_prec <- Event_log3 %>% 
+  precedence_matrix(type = "relative-consequent")
+
+write.csv(precedence_rel_prec, file = "precedents_rel_prec.csv")
 
 ResourceFrequency <- resource_frequency(Event_log3,"resource-activity")
 write.csv(ResourceFrequency, file = "ResourceFrequency.csv")
@@ -41,5 +44,15 @@ performance1 <- Event_log3 %>%
                 process_matrix(type = 
                               performance(median,units = "days",
                                           flow_time = "inter_start_time")
-                              )
+                )
+
+performance1 %>% plot()
+
 write.csv(performance1, file = "FlowAnalysis.csv")
+
+
+
+
+
+Event_log3 %>%
+ trace_explorer(coverage = 1)
