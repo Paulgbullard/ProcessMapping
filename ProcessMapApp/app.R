@@ -1,12 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(bupaR)
 library(DiagrammeR)
@@ -58,7 +49,18 @@ ui <- fluidPage(
         
         mainPanel(
             tabsetPanel(type = "tabs",
-                        tabPanel("Plot", withSpinner(svgPanZoomOutput("process_map"))),
+                        tabPanel("Plot", 
+                                withSpinner(svgPanZoomOutput("process_map")),
+                                fluidRow(column(width = 6, 
+                                                wellPanel(div(style = "font-size:15px", 
+                                                              sliderInput("Percentile", 
+                                                                          "Select top % to show", 
+                                                                          min = 0, 
+                                                                          max = 100, 
+                                                                          value = 100, 
+                                                                          post = "%", 
+                                                                          width = "100%")
+                                            ))))),
                         tabPanel("Flow", plotOutput("rel_ant"))
                 
             )
@@ -105,7 +107,10 @@ server <- function(input, output, session) {
         }
     )
     
-    output$process_map <- renderSvgPanZoom({process_map(event_log(),
+    output$process_map <- renderSvgPanZoom({
+        event_log() %>% 
+            filter_activity_frequency(percentage = input$Percentile/100) %>% 
+                                                        process_map(
                                                         type_nodes = frequency("absolute"),
                                                         type_edges = frequency("absolute"),                                                                                                              ,
                                                         render = FALSE) %>% 
