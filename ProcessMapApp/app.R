@@ -61,7 +61,9 @@ ui <- fluidPage(
                                                                           post = "%", 
                                                                           width = "100%")
                                             ))))),
-                        tabPanel("Flow", plotOutput("rel_ant"))
+                        tabPanel("Flow", 
+                                 plotOutput("rel_ant")),
+                        tabPanel("Resources", plotOutput("resource"))
                 
             )
         )
@@ -128,6 +130,22 @@ server <- function(input, output, session) {
         geom_text(aes(consequent, antecedent, label=sprintf("%1.1f%%", rel_antecedent*100)), color = "white", size = 4, ) +
         theme(axis.text.x = element_text(angle = 45, vjust = 1, 
                                          size = 12, hjust = 1))
+    
+    
+    })
+    
+    output$resource <- renderPlot({resources <- event_log() %>% 
+        resource_frequency("resource-activity")
+    
+    ggplot(data = resources, aes_string(x=input$colSelectActivity,
+                                        y=input$colSelectResourceID,
+                                        fill="relative_resource")) + 
+        geom_tile() +
+        scale_fill_gradient(low = "#33B8FF", high = "blue")+
+        geom_text(aes(label=sprintf("%1.1f%%", relative_resource*100)), color = "white", size = 4, ) +
+        theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                         size = 12, hjust = 1))
+    
     })
     
 }
