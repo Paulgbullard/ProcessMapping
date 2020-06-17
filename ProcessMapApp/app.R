@@ -1,3 +1,5 @@
+#Todo - if .csv then, else if .xlsx etc
+
 library(shiny)
 library(bupaR)
 library(DiagrammeR)
@@ -9,47 +11,63 @@ library(DiagrammeRsvg)
 library(svgPanZoom)
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
+ui <- navbarPage("Process Mapping Tool",
+    tabPanel("Help",
+             navlistPanel(
+                 tabPanel("Data Preparation",
+                              titlePanel("Preparing your data for processing"),
+    
+                                p("In order to process your data, it needs to be in a format that the tool can understand."),
+                                p("When setting up your dataset, each row will need at least:"),
+                                p("1. A case identifier, unique for each case e.g. a patient ID ", 
+                                  br(),
+                                  "2. A date or datetime stamp for each activity, e.g. arrival at 01/04/2020 08:00", 
+                                  br(),
+                                  "3. An activity identifier, which will be a ", strong('node'), "on the process map e.g. \'blood test\'",
+                                  br(),
+                                  "4. A resource identifier e.g. seen by a ", strong('nurse')),
+                                p("Additionally, you may have multiple \'transactions\' for each activity, such as a check-in, started, finished, check-out. If there are timestamps for each of these, the additional optional parameters should be used:"),
+                                p("5. A transactional lifecycle identifier, the type of transaction for each activity, e.g. check-in, started, finished, check-out",
+                                  br(),
+                                  "6. An activity instance identifier, e.g. a patient has had multiple surgeries, each with check-in and check-out datetimes, each step in each surgery should have its relevant surgery identifier"),
+                                br(),
+                                titlePanel("Example"),
+                                p("An example dataset is shown below, with the different aspects indicated."),
+                                img(src = "Patient Example.png"),      
+                                list(tags$cite("Example taken from bupaR resources"), tags$a("here", href="https://www.bupar.net"))
+                        ),
+                 tabPanel("Using the tool"),
+                 tabPanel("Process Map Output"),
+                 tabPanel("Flow Output"),
+                 tabPanel("Resource Output")
+             )),
+    
+    tabPanel("Mapping",
     titlePanel("Pathway Mapping"),
     
     sidebarLayout(
         
-        sidebarPanel(fileInput(inputId = 'file1', 
+        sidebarPanel(
+            fileInput(inputId = 'file1', 
                                label = "Upload dataset",
                                multiple = FALSE,
                                ),
+            uiOutput("required"),
                      
-                     selectInput("colSelectCase","Select a CaseID", choices = "Upload data"),
-                     bsTooltip(id = "colSelectCase",
-                               title = "Select the unique patient identifier",
-                               placement = "right",
-                               trigger = "hover"),
-        
-                     selectInput("colSelectActivity", "Select an ActivityID", choices = "Upload data"),
-                     bsTooltip(id = "colSelectActivity", 
-                               title = "Select the appointment/activity type",
-                               placement = "right",
-                               trigger = "hover"),
-                     
-                     
-                     selectInput("colSelectTimestamp", "Select a Timestamp", choices = "Upload data"),
-                     bsTooltip(id = "colSelectTimestamp", 
-                               title = "Select the timestamp for the appointment/activity",
-                               placement = "right",
-                               trigger = "hover"),
-                     
-                     selectInput("colSelectResourceID", "Select a ResourceID", choices = "Upload data"),
-                     bsTooltip(id = "colSelectResourceID", 
-                               title = "Select the resource for the appointment/activity",
-                               placement = "right",
-                               trigger = "hover"),
-                     
-                     actionButton("go","Build Map")
+            tags$hr(style="border-color: black;"),
+            h3("Optional"),
+            uiOutput("optional"),
+                    
+            actionButton("go","Build Map"),
+            bsTooltip(id = "go",
+                title = "Click here to generate pathway analysis",
+                placement = "right",
+                trigger = "hover")
         ),
         
         mainPanel(
             tabsetPanel(type = "tabs",
-                        tabPanel("Plot", 
+                        tabPanel("Plot",
                                 withSpinner(svgPanZoomOutput("process_map")),
                                 fluidRow(column(width = 6, 
                                                 wellPanel(div(style = "font-size:15px", 
@@ -69,28 +87,78 @@ ui <- fluidPage(
         )
         
     )
-   
+    )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
     
-    dat <- eventReactive(input$file1,{readxl::read_excel(paste(input$file1$datapath),sheet = "Sheet1")})
+    dat <- eventReactive(input$file1,{
+        
+        if (endsWith(input$file1$name, '.xlsx')| endsWith(input$file1$name, '.xls'))
+            {readxl::read_excel(paste(input$file1$datapath),sheet = "Sheet1")}
+        else
+            {read.csv(input$file1$datapath)}
+            
+        })
+    
+    output$required <- renderUI(
+                        tagList(
+                            tipify(
+                                selectInput("colSelectCase","Select a CaseID", choices = "Upload data"),
+                                title = "Select the unique patient identifier",
+                                placement = "right",
+                                trigger = "hover"),
+                            tipify(
+                                selectInput("colSelectActivity", "Select an ActivityID", choices = "Upload data"),
+                                title = "Select the appointment/activity type",
+                                placement = "right",
+                                trigger = "hover"),
+                            tipify(
+                                selectInput("colSelectTimestamp", "Select a Timestamp", choices = "Upload data"),
+                                title = "Select the timestamp for the appointment/activity",
+                                placement = "right",
+                                trigger = "hover"),
+                            tipify(
+                                selectInput("colSelectResourceID", "Select a ResourceID", choices = "Upload data"),
+                                title = "Select the resource for the appointment/activity",
+                                placement = "right",
+                                trigger = "hover"),
+                                )
+                            )
+    output$optional <- renderUI(
+                        tagList(
+                            tipify(
+                                selectInput("colSelectActivityInstance", "Select an Activity Instance ID", choices = "Upload data"),
+                                title = "Select the activity instance ID for the appointment/activity",
+                                placement = "right",
+                                trigger = "hover"),
+                            tipify(
+                                selectInput("colSelectLifecycleID", "Select a Lifecycle ID", choices = "Upload data"),
+                                title = "Select the lifecycle ID for the appointment/activity",
+                                placement = "right",
+                                trigger = "hover")
+                                )
+                            )
     
     observe({
         updateSelectInput(session, "colSelectCase", choices = c("Please select...",names(dat())))
         updateSelectInput(session, "colSelectActivity", choices = c("Please select...",names(dat())))
         updateSelectInput(session,"colSelectTimestamp", choices = c("Please select...",names(dat())))
         updateSelectInput(session, "colSelectResourceID", choices = c("Please select...",names(dat())))
+        updateSelectInput(session, "colSelectActivityInstance", choices = c("Not Applicable",names(dat())))
+        updateSelectInput(session, "colSelectLifecycleID", choices = c("Not Applicable",names(dat())))
     })
     
     event_log <- eventReactive(input$go, {
         
         dat <- dat()
         
-        dat$AppointmentDateTransformed <- as.integer(dat$AppointmentDateTransformed)
+        dat[input$colSelectTimestamp] <- as.integer(unlist(dat[input$colSelectTimestamp]))
         
-        dat$AppointmentDateTransformed <- as.Date(dat$`AppointmentDateTransformed`, origin = "1900-01-01")
+        dat[input$colSelectTimestamp] <- as.Date(unlist(dat[input$colSelectTimestamp]), origin = "1900-01-01")
+        
+        if (input$colSelectActivityInstance == "Not Applicable") {
         
         Event_log <- dat %>% 
             mutate(status = "complete",
@@ -103,7 +171,21 @@ server <- function(input, output, session) {
                 activity_instance_id = "activity_instance",
                 timestamp = input$colSelectTimestamp,
                 lifecycle_id = "status",
+                resource_id = input$colSelectResourceID) }
+        
+        else
+        {
+            Event_log <- dat
+            
+            Event_log <- Event_log %>% 
+            eventlog(
+                case_id = input$colSelectCase,
+                activity_id = input$colSelectActivity,
+                activity_instance_id = input$colSelectActivityInstance,
+                timestamp = input$colSelectTimestamp,
+                lifecycle_id = input$colSelectLifecycleID,
                 resource_id = input$colSelectResourceID)
+        }   
         
         return(Event_log) 
         }

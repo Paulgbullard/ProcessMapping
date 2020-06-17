@@ -1,0 +1,12 @@
+name: ProcessMapApp
+title: ProcessMapApp
+username:
+account: paulgbullard
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2430471
+bundleId: 3246820
+url: https://paulgbullard.shinyapps.io/ProcessMapApp/
+when: 1591700225.26595
+asMultiple: FALSE
+asStatic: FALSE
