@@ -1,4 +1,4 @@
-#Todo - if .csv then, else if .xlsx etc
+#todo - relative/absolute % on process map
 
 library(shiny)
 library(bupaR)
@@ -10,7 +10,7 @@ library(rsvg)
 library(DiagrammeRsvg)
 library(svgPanZoom)
 
-# Define UI for application that draws a histogram
+# Define UI
 ui <- navbarPage("Process Mapping Tool",
     tabPanel("Help",
              navlistPanel(
@@ -36,9 +36,51 @@ ui <- navbarPage("Process Mapping Tool",
                                 img(src = "Patient Example.png"),      
                                 list(tags$cite("Example taken from bupaR resources"), tags$a("here", href="https://www.bupar.net"))
                         ),
-                 tabPanel("Using the tool"),
-                 tabPanel("Process Map Output"),
-                 tabPanel("Flow Output"),
+                 tabPanel("Using the tool",
+                          titlePanel("How to use the pathway mapping tool"),
+                          p("The pathway mapping tool is designed to make pathway mapping a process easy, once the data is in the format detailed on the ",strong("data processing"), "tab. To complete the pathway map, simply:"),
+                          br(),
+                          p("1. Upload the dataset from your PC",
+                            br(),
+                            "2. Assign each element to a column name in the dataset",
+                            br(),
+                            "3. ", em("Optional"), " - assign the two optional elements of activity instance and lifecycle ID",
+                            br(),
+                            "4. Click \'Build Map\' to process the data, and generate the outputs."),
+                          br(),
+                          img(src = "ProcessingData.png", height = 400),
+                          p(em("Each number corresponds to the action described above"))
+                          ),
+                 tabPanel("Process Map Output",
+                          titlePanel("The Process Map"),
+                          p("Once the data has been uploaded and the configuration set, several outputs will be produced that look at ", 
+                            strong("the process map, the flow between appointment types, and the resources used."),
+                            "These can be used to explore the processes used within your system."),
+                            br(),
+                            p("The first output to consider is the ",
+                              strong("pathway map"),
+                              " which displays the movement of cases between different activities."),
+                            img(src = "Process Map.png", width = 800),
+                            br(),
+                            p("As process maps grow, the information can be harder to discern. Therefore, it may be prudent to hide some of the more infrequent flows. This can be done at the bottom of the pathway map. Setting the value to 80%, for example, will trim the pathway map down to the most frequent activities up to the 80th percentile of events, i.e. activities that make up 80% of events."),
+                            img(src = "Process Map 80.png", width = 800),
+                            p(em("Setting the 'Percentile' slider to 80% changes the process map to show only the top 80% most frequent pathways")),
+                            br(),
+                            p("The flow betwwen the activities can be viewed as either absolute numbers (the number of cases moving between each activity), or relative (the percentage of cases moving from one activity to each other activity)."),
+                            img(src = "Process Map Relative.png", width = 800),
+                            p(em("Setting the 'Flow Type' to relative will show relative flow rates rather than absolute numbers"))
+                          ),
+                 tabPanel("Flow Output",
+                          titlePanel("The Flow Map"),
+                          p("The flow map shows an antecedent/consequent plot of the data entered. 
+                            It shows the percentage of cases that move from one type of activity to another.
+                            An example is shown below."),
+                          img(src = "AntCons.png", width = 1000),
+                          p(em("An example of an Antecedence/Consequence (flow) diagram")),
+                          p("The diagram is read horizontally and then vertically. 
+                            In the diagram above, for example, 47.4% of cases from Triage and Assessment subsequently go directly to a Blood Test, 52.5% go to X-ray, and for a small minority of 0.4% the Triage and Assessment is the last action taken."),
+                          img(src = "AntConsRead.png", width = 1000),
+                          p(em("How to read the flow diagram - horizontally follow the black lines for the antecendent, and vertically down the blue lines for the consequent action."))),
                  tabPanel("Resource Output")
              )),
     
@@ -69,16 +111,23 @@ ui <- navbarPage("Process Mapping Tool",
             tabsetPanel(type = "tabs",
                         tabPanel("Plot",
                                 withSpinner(svgPanZoomOutput("process_map")),
-                                fluidRow(column(width = 6, 
-                                                wellPanel(div(style = "font-size:15px", 
-                                                              sliderInput("Percentile", 
+                                fluidRow(column(width = 6,  
+                                                wellPanel(h4("Percentile Selection"),div(style = "font-size:15px", 
+                                                              sliderInput("Percentile",
                                                                           "Select top % to show", 
                                                                           min = 0, 
                                                                           max = 100, 
                                                                           value = 100, 
                                                                           post = "%", 
-                                                                          width = "100%")
-                                            ))))),
+                                                                          width = "100%")))),
+                                fluidRow(column(width = 6,
+                                                wellPanel(h4("Flow Type"),radioButtons("AbsRel",
+                                                                       "Display 'Absolute' or 'Relative' flow rates",
+                                                                       #choices = c("absolute", "relative"),
+                                                                       selected = "absolute",
+                                                                       choiceNames = c("Absolute", "Relative"),
+                                                                       choiceValues = c("absolute", "relative")))))))
+                                            ,
                         tabPanel("Flow", 
                                  plotOutput("rel_ant")),
                         tabPanel("Resources", plotOutput("resource"))
@@ -90,7 +139,7 @@ ui <- navbarPage("Process Mapping Tool",
     )
 )
 
-# Define server logic required to draw a histogram
+# Define server logic
 server <- function(input, output, session) {
     
     dat <- eventReactive(input$file1,{
@@ -191,13 +240,15 @@ server <- function(input, output, session) {
         }
     )
     
-    output$process_map <- renderSvgPanZoom({
+    output$process_map <- 
+        renderSvgPanZoom({
         event_log() %>% 
             filter_activity_frequency(percentage = input$Percentile/100) %>% 
-                                                        process_map(
-                                                        type_nodes = frequency("absolute"),
-                                                        type_edges = frequency("absolute"),                                                                                                              ,
-                                                        render = FALSE) %>% 
+                                                        
+                                                            process_map(
+                                                            type_nodes = frequency(input$AbsRel),
+                                                            type_edges = frequency(input$AbsRel),
+                                                            render = FALSE) %>% 
             generate_dot() %>%
             grViz(width = 1000, height = 1800) %>%
             export_svg %>%
