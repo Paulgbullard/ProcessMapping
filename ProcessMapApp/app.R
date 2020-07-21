@@ -81,7 +81,12 @@ ui <- navbarPage("Process Mapping Tool",
                             In the diagram above, for example, 47.4% of cases from Triage and Assessment subsequently go directly to a Blood Test, 52.5% go to X-ray, and for a small minority of 0.4% the Triage and Assessment is the last action taken."),
                           img(src = "AntConsRead.png", width = 1000),
                           p(em("How to read the flow diagram - horizontally follow the black lines for the antecendent, and vertically down the blue lines for the consequent action."))),
-                 tabPanel("Resource Output")
+                 tabPanel("Resource Output",
+                          titlePanel("Resource Output"),
+                          p("The resource output map shows the various resources used against the types of activity.
+                            It will show how much of each activity (as a percentage) was 'staffed' by particular resources."),
+                          img(src = "Resources.png", width = 1000),
+                          p(em("A resource plot showing resources used for different activity types"))
              )),
     
     tabPanel("Mapping",
